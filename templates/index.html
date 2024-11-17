@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate SSL Certificate</title>
+    <!-- Tailwind CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            background-color: #f7fafc;
+            font-family: 'Arial', sans-serif;
+        }
+        .container {
+            width: 400px; /* Width of the container */
+            height: 400px; /* Height of the container, same as width */
+            background: linear-gradient(to right, #e0f7fa, #b2ebf2);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            border: 1px solid #ddd;
+            padding: 16px; /* Reduced padding */
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative; /* For positioning spinner */
+        }
+        .btn-primary {
+            background-color: #38a169;
+            border: none;
+            color: white;
+            padding: 8px 16px; /* Smaller button size */
+            font-size: 14px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        .btn-primary:hover {
+            background-color: #2f855a;
+        }
+        .btn-primary:active {
+            transform: scale(1.05);
+        }
+        .code-box-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 24px; /* Space between form and code boxes */
+        }
+        .code-box {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px; /* Space between code boxes */
+            position: relative;
+            overflow: auto; /* Enable scrolling */
+            white-space: nowrap; /* Prevent text from wrapping */
+            width: 420px; /* Adjust width */
+            height: 260px; /* Adjust height */
+            max-height: 260px; /* Ensure box does not exceed this height */
+        }
+        .code-box pre {
+            margin: 0;
+            overflow: auto; /* Allow scrolling */
+            max-height: 100%; /* Make sure it fits within the container */
+            white-space: pre; /* Preserve whitespace formatting */
+        }
+        .copy-icon {
+            position: absolute;
+            top: 8px; /* Adjusted position */
+            right: 8px; /* Adjusted position */
+            background-color: rgba(56, 161, 105, 0.2); /* Transparent background color */
+            color: #38a169;
+            border: none;
+            border-radius: 4px;
+            padding: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-size: 16px; /* Adjusted icon size */
+            z-index: 10; /* Ensure it stays above other content */
+        }
+        .copy-icon:hover {
+            background-color: rgba(56, 161, 105, 0.3); /* Slightly darker on hover */
+        }
+        .input-large {
+            padding: 16px; /* Increased padding for larger input boxes */
+            font-size: 18px; /* Increased font size for larger text */
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #38a169;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            position: absolute;
+            bottom: 10px; /* Adjusted position from the bottom */
+            left: 50%;
+            transform: translateX(-50%); /* Center horizontally */
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen bg-gray-100">
+
+    <div class="container">
+        <h1 class="text-2xl font-bold text-center mb-6 text-black">SSL Certificate Generator</h1>
+        <form method="POST" onsubmit="return validateForm()">
+            <div class="mb-6 w-full">
+                <input type="text" id="domain" name="domain" placeholder="Enter subdomain" required
+                       class="w-full border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all input-large">
+            </div>
+
+            <div class="mb-8 w-full">
+                <input type="email" id="email" name="email" placeholder="Enter email address" required
+                       class="w-full border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all input-large">
+            </div>
+
+            <button type="submit" class="btn-primary w-full rounded-lg font-semibold text-white focus:outline-none transition-all">Generate SSL</button>
+        </form>
+
+        <!-- Spinner -->
+        <div id="loading" class="hidden">
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    {% if cert_content and key_content %}
+    <div class="code-box-container">
+        <div class="code-box relative">
+            <h2 class="text-lg font-semibold text-gray-700">Fullchain Content</h2>
+            <pre id="certContent">{{ cert_content }}</pre>
+            <button class="copy-icon" onclick="copyToClipboard('certContent')"><i class="fas fa-clone"></i></button>
+        </div>
+
+        <div class="code-box relative">
+            <h2 class="text-lg font-semibold text-gray-700">Private Key Content</h2>
+            <pre id="keyContent">{{ key_content }}</pre>
+            <button class="copy-icon" onclick="copyToClipboard('keyContent')"><i class="fas fa-clone"></i></button>
+        </div>
+    </div>
+    {% endif %}
+
+    <script>
+        // Validate the form and show the loading spinner
+        function validateForm() {
+            const domain = document.getElementById('domain').value;
+            const email = document.getElementById('email').value;
+            if (!domain || !email) {
+                alert("Please fill out all fields.");
+                return false;
+            }
+            document.getElementById('loading').classList.remove('hidden');
+            return true;
+        }
+
+        // Copy to clipboard function
+        function copyToClipboard(elementId) {
+            const textArea = document.createElement('textarea');
+            textArea.value = document.getElementById(elementId).innerText;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                alert('Copied to clipboard.');
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+            }
+            document.body.removeChild(textArea);
+        }
+    </script>
+
+</body>
+</html>
